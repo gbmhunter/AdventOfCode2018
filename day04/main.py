@@ -50,3 +50,22 @@ max_value = max(guard_sleep_times[key])
 max_index = guard_sleep_times[key].index(max_value)
 
 print(f'Guard {key} slept the most at minute {max_index}. Answer = {int(key)*max_index}')
+
+# PART 2
+
+global_max_guard_id = None
+global_max_sleep_min_val = None
+global_max_sleep_min = None
+for guard_id, sleep_times in guard_sleep_times.items():
+    max_sleep_min = max(sleep_times)
+    if global_max_guard_id is None:
+        global_max_guard_id = guard_id
+        global_max_sleep_min_val = max_sleep_min
+        global_max_sleep_min = sleep_times.index(max_sleep_min)
+    elif max_sleep_min > global_max_sleep_min_val:
+        global_max_guard_id = guard_id
+        global_max_sleep_min_val = max_sleep_min
+        global_max_sleep_min = sleep_times.index(max_sleep_min)
+
+print(f'Guard {global_max_guard_id} slept for the most in minute {global_max_sleep_min} ({global_max_sleep_min_val} times). Answer = {int(global_max_guard_id)*global_max_sleep_min}.')
+
