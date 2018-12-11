@@ -42,7 +42,7 @@ def draw_point_map(point_map, points):
     # Reset all values back to 0
     point_map.fill(0)
     for point in points:
-        print(f'Setting {point.y_pos}, {point.x_pos}')
+        # print(f'Setting {point.y_pos}, {point.x_pos}')
         point_map[point.y_pos + OFFSET][point.x_pos + OFFSET] = 255
 
 def print_point_map(point_map):
@@ -59,7 +59,27 @@ def perform_1_sec_step(points):
         point.x_pos += point.x_vel
         point.y_pos += point.y_vel
 
-    # print(f'{str(points)}')
+def calc_connectivity(point_map):
+    connectivity = 0
+
+    # Ignore border pixels, this makes the innner loop logic below easier
+    # (don't have to worry about out-of-bounds)
+    for y in range(1, point_map.shape[0] - 1):
+        for x in range(1, point_map.shape[1] - 1):
+            if point_map[x][y] == 0:
+                continue
+
+            # Count how many neighbouring pixels are also 255
+            # (up/down/left/right)
+            if point_map[x-1][y] == 255:
+                connectivity += 1
+            if point_map[x+1][y] == 255:
+                connectivity += 1
+            if point_map[x][y-1] == 255:
+                connectivity += 1 
+            if point_map[x][y+1] == 255:
+                connectivity += 1  
+    return connectivity
 
 def main():
 
@@ -80,10 +100,15 @@ def main():
     point_map = np.zeros((SIZE, SIZE))
     save_point_map_to_image(point_map, img)    
 
-    for i in range(3):
+    while(True):
         perform_1_sec_step(points)
         draw_point_map(point_map, points)
         save_point_map_to_image(point_map, img)
+        connectivity = calc_connectivity(point_map)
+        print(f'connectivity = {connectivity}')
+
+        if connectivity > 50:
+            break
 
 if __name__ == '__main__':
     main()
