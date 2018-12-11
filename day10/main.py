@@ -3,112 +3,87 @@
 from PIL import Image
 import numpy as np
 
+IMAGE_SIZE = 300
+IMAGE_OFFSET = 0
+
 class Point:
     def __init__(self, point_str: str):
-        print(f'__init__() called with point_str = {point_str}')
-
         pos_x_start = 10
         pos_x_stop = point_str.find(',', pos_x_start)
-        print(pos_x_stop)
         self.x_pos = int(point_str[pos_x_start: pos_x_stop])
-        print(f'x_pos = {self.x_pos}')
 
         pos_y_stop = point_str.find('>', pos_x_stop)
         self.y_pos = int(point_str[pos_x_stop + 1: pos_y_stop])
-        print(f'y_pos = {self.y_pos}')
 
         vel_x_start = point_str.find('<', pos_y_stop) + 1
         vel_x_stop = point_str.find(',', vel_x_start)
         self.x_vel = int(point_str[vel_x_start: vel_x_stop])
-        print(f'x_vel = {self.x_vel}')
 
         vel_y_stop = point_str.find('>', vel_x_stop)
         self.y_vel = int(point_str[vel_x_stop + 1: vel_y_stop])
-        print(f'y_vel = {self.y_vel}')
 
-    def __repr__(self):
-        return f'x = {self.x_pos}, y = {self.y_pos}\n'
+def main():
+    points = {}
+    with open('input.txt', 'r') as file:
+        for line in file:
+            point = Point(line.strip())
+            key = (point.x_pos, point.y_pos)
+            if not key in points:
+                points[key] = []
+            points[key].append(point)
 
-points = []
-with open('input.txt', 'r') as file:
-    for line in file:
-        points.append(Point(line.strip()))
+    # 'L' makes it greyscale
+    img = Image.new('L', (IMAGE_SIZE, IMAGE_SIZE))
+    point_map = np.zeros((IMAGE_SIZE, IMAGE_SIZE)) 
 
-SIZE = 20
-OFFSET = 5
-# print(point_map)
+    num_iterations = 0
+    while(True):
+        connectivity = calc_connectivity(points)
+        if connectivity > 600:
+            print(f'connectivity = {connectivity}, num. seconds = {num_iterations}')
+            draw_and_save_point_map(points, point_map, img)
+            break
+        points = perform_1_sec_step(points)
+        num_iterations += 1
 
-def draw_point_map(point_map, points):
+def draw_and_save_point_map(points, point_map, img):
     # Reset all values back to 0
     point_map.fill(0)
-    for point in points:
-        # print(f'Setting {point.y_pos}, {point.x_pos}')
-        point_map[point.y_pos + OFFSET][point.x_pos + OFFSET] = 255
+    for key in points:
+        for point in points[key]:
+            point_map[point.y_pos + IMAGE_OFFSET][point.x_pos + IMAGE_OFFSET] = 255
 
-def print_point_map(point_map):
-    for row in point_map:
-        print(f'{row}\n')
-
-def save_point_map_to_image(point_map, img):
     img.putdata(point_map.flatten())
     img.save('image.png')
 
 # Perform a 1-second step in time, update positions
 def perform_1_sec_step(points):
-    for point in points:
-        point.x_pos += point.x_vel
-        point.y_pos += point.y_vel
+    new_points = {}
+    for key in points:
+        points_list = points[key]
+        for point in points_list:
+            point.x_pos += point.x_vel
+            point.y_pos += point.y_vel
+            new_key = (point.x_pos, point.y_pos)
+            if not new_key in new_points:
+                new_points[new_key] = []
+            new_points[new_key].append(point)        
+    return new_points
 
-def calc_connectivity(point_map):
+def calc_connectivity(points):    
     connectivity = 0
-
-    # Ignore border pixels, this makes the innner loop logic below easier
-    # (don't have to worry about out-of-bounds)
-    for y in range(1, point_map.shape[0] - 1):
-        for x in range(1, point_map.shape[1] - 1):
-            if point_map[x][y] == 0:
-                continue
-
-            # Count how many neighbouring pixels are also 255
-            # (up/down/left/right)
-            if point_map[x-1][y] == 255:
+    for key in points:
+        points_list = points[key]
+        for point in points_list:
+            if (point.x_pos - 1, point.y_pos) in points:
                 connectivity += 1
-            if point_map[x+1][y] == 255:
+            if (point.x_pos + 1, point.y_pos) in points:
                 connectivity += 1
-            if point_map[x][y-1] == 255:
-                connectivity += 1 
-            if point_map[x][y+1] == 255:
-                connectivity += 1  
+            if (point.x_pos, point.y_pos - 1) in points:
+                connectivity += 1
+            if (point.x_pos, point.y_pos + 1) in points:
+                connectivity += 1
     return connectivity
-
-def main():
-
-    # 'L' makes it greyscale
-    img = Image.new('L', (SIZE, SIZE))
-
-    # Create point map. DO NOT USE []*SIZE syntax as this
-    # does not create unique lists!
-    # point_map = []
-    # for i in range(SIZE):
-    #     point_map.append([])
-    #     for j in range(SIZE):
-    #         point_map[i].append(' ')
-    # point_map[3][3] = '*'
-    # print_point_map(point_map)
-    # return
-
-    point_map = np.zeros((SIZE, SIZE))
-    save_point_map_to_image(point_map, img)    
-
-    while(True):
-        perform_1_sec_step(points)
-        draw_point_map(point_map, points)
-        save_point_map_to_image(point_map, img)
-        connectivity = calc_connectivity(point_map)
-        print(f'connectivity = {connectivity}')
-
-        if connectivity > 50:
-            break
 
 if __name__ == '__main__':
     main()
