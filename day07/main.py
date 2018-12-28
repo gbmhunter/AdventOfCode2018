@@ -5,7 +5,13 @@ class Node:
         self.dependencies = []
         self.completed = False
 
-def part1():
+class Worker:
+    def __init__(self, id):
+        self.id = id
+        self.curr_step = None
+        self.remaining_time = 0
+
+def run_sleigh_building(num_workers, offset_seconds):
 
     id_to_node_dict = {}
     with open('input.txt', 'r') as input_file:
@@ -29,36 +35,63 @@ def part1():
             runnable_step_ids.append(id)
 
     step_order = ''
+    workers = []
+    for i in range(num_workers):
+        workers.append(Worker(i))
+
+    total_runtime = 0
     while(True):
 
-        if len(runnable_step_ids) == 0:
-            print('Finished all steps.')
+        all_free = True
+        for worker in workers:
+            if worker.curr_step is not None:
+                all_free = False
+
+        if len(runnable_step_ids) == 0 and all_free:            
             break
 
-        runnable_step_ids = sorted(runnable_step_ids)
-        print(f'runnable_step_ids = {runnable_step_ids}')
-        step_id_to_run = runnable_step_ids.pop(0)
-        print(f'step_id_to_run = {step_id_to_run}')
+        runnable_step_ids = sorted(runnable_step_ids)        
 
-        # Run step
-        id_to_node_dict[step_id_to_run].completed = True
-        step_order += step_id_to_run
+        # Check how many workers are free
+        for worker in workers:
+            if worker.curr_step is None:
+                # Worker is free, see if there is a job to assign
+                if len(runnable_step_ids) > 0:                    
+                    worker.curr_step = runnable_step_ids.pop(0)
+                    # Calculate step time
+                    step_time = offset_seconds + ord(worker.curr_step)%32                    
+                    worker.remaining_time = step_time
 
-        # Check if any of the run step's dependants are now runnable
-        for node in id_to_node_dict[step_id_to_run].dependants:
-            # For this node to be runnable, all of it's dependencies must be completed
-            all_completed = True
-            for dependancy_node in node.dependencies:
-                if not dependancy_node.completed:
-                    all_completed = False
-                    break
+        # Increment elapsed seconds
+        total_runtime += 1        
 
-            if all_completed:
-                print(f'node {node.id} is runnable.')
-                runnable_step_ids.append(node.id)
+        # Update workers remaining times
+        for worker in workers:
+            if worker.curr_step is not None:
+                worker.remaining_time -= 1
+                if worker.remaining_time == 0:                    
+                    # Worker has finished step
+                    id_to_node_dict[worker.curr_step].completed = True
+                    step_order += worker.curr_step
 
-    print(f'part 1: step order = {step_order}')
+                    # Check if any of the run step's dependants are now runnable
+                    for node in id_to_node_dict[worker.curr_step].dependants:
+                        # For this node to be runnable, all of it's dependencies must be completed
+                        all_completed = True
+                        for dependancy_node in node.dependencies:
+                            if not dependancy_node.completed:
+                                all_completed = False
+                                break
+
+                        if all_completed:                            
+                            runnable_step_ids.append(node.id)
+                    worker.curr_step = None
+                    worker.remaining_time = 0
     
+    return step_order, total_runtime
 
 if __name__ == '__main__':
-    part1()
+    step_order, run_time = run_sleigh_building(1, 0)
+    print(f'part1: step_order = {step_order}')
+    step_order, run_time = run_sleigh_building(5, 60)
+    print(f'part2: run_time = {run_time}')
